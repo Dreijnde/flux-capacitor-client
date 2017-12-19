@@ -47,12 +47,17 @@ export async function startTracking(consumerName: string, consumer: Function, se
     while (!stopped) {
         const batch = await service.read(consumerName, 64, 60000);
         batch.messages.map(msg => {
-            return {
-                type: msg.type(),
-                payload: msg.payload(),
-                revision: msg.revision()
+            try {
+                return {
+                    type: msg.type(),
+                    payload: msg.payload(),
+                    revision: msg.revision()
+                }
+            } catch (e) {
+                console.warn("Failed to deserialize the payload of a message", e);
+                return null;
             }
-        }).forEach(msg => consumer(msg));
+        }).filter(msg => msg !== null).forEach(msg => consumer(msg));
         if (batch.lastIndex) {
             service.storePosition(consumerName, batch.segment, batch.lastIndex);
         }
